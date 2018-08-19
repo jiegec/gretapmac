@@ -39,6 +39,7 @@ struct gre {
 
 int gretap_fd, tap_fd;
 std::string local_ip, remote_ip, tap_if;
+struct in_addr local_ipaddr, remote_ipaddr;
 const size_t iphdr_len = 20;
 const size_t encap_len = iphdr_len + sizeof(struct gre);
 const size_t ether_encap_type = 0x6558;
@@ -55,6 +56,14 @@ void gre_to_tap() {
         size_t hdrlen = iphdr->ip_hl * 4 + sizeof(gre);
         if (size < 0) {
             perror("recv");
+        }
+
+        if (iphdr->ip_src.s_addr != remote_ipaddr.s_addr || iphdr->ip_dst.s_addr != local_ipaddr.s_addr) {
+            char src[INET_ADDRSTRLEN], dst[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &iphdr->ip_src, src, sizeof(src));
+            inet_ntop(AF_INET, &iphdr->ip_dst, dst, sizeof(dst));
+            printf("GRE packet from %s to %s, ignoring\n", src, dst);
+            continue;
         }
 
         struct gre *hdr = (struct gre*)(buffer + offset);
@@ -87,12 +96,14 @@ void tap_to_gre() {
     iphdr->ip_off = 0;
     iphdr->ip_ttl = IPDEFTTL;
     iphdr->ip_p = IPPROTO_GRE;
+
+    iphdr->ip_src = local_ipaddr;
     inet_pton(AF_INET, local_ip.c_str(), &iphdr->ip_src);
     struct sockaddr_in daddr;
     daddr.sin_family = AF_INET;
     daddr.sin_port = 0;
-    inet_pton(AF_INET, remote_ip.c_str(), &daddr.sin_addr);
-    iphdr->ip_dst = daddr.sin_addr;
+    daddr.sin_addr = remote_ipaddr;
+    iphdr->ip_dst = remote_ipaddr;
 
     grehdr->ether_type = htons(ether_encap_type);
 
@@ -122,7 +133,9 @@ int main(int argc, char *argv[]) {
     }
     tap_if = argv[1];
     local_ip = argv[2];
+    inet_pton(AF_INET, local_ip.c_str(), &local_ipaddr);
     remote_ip = argv[3];
+    inet_pton(AF_INET, remote_ip.c_str(), &remote_ipaddr);
 
     if ((gretap_fd = socket(PF_INET, SOCK_RAW, IPPROTO_GRE)) < 0) {
         perror("socket");
