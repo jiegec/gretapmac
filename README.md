@@ -34,6 +34,6 @@ $ cmake ..
 $ make
 $ ./gretapmac # Usage help
 Usage: gretapmac [tap_if] [local_ip] [remote_ip]
-    equivalent to: ip link add [tap_if] type gretap local [local_ip] [remote_ip]
+    equivalent to: ip link add [tap_if] type gretap local [local_ip] remote [remote_ip]
 $ sudo ./gretapmac tap0 192.168.0.1 1.2.3.4
 ```
