@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
     std::string command = "ifconfig ";
     command += tap_if;
     command += " up";
-    system("ifconfig tap2 up");
+    system(command);
     std::thread t1(gre_to_tap);
     std::thread t2(tap_to_gre);
     t1.join();
